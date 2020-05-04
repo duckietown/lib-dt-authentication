@@ -2,13 +2,13 @@ import os
 from setuptools import setup, find_packages
 
 # :==> Fill in your project data here
-library_name = '<LIBRARY_NAME>'
-library_webpage = '<LIBRARY_WEB_PAGE>'
-maintainer = '<YOUR_FULL_NAME>'
-maintainer_email = '<YOUR_EMAIL_ADDRESS>'
-short_description = '<BRIEF_DESCRIPTION>'
+library_name = 'dt_authentication'
+library_webpage = 'https://github.com/duckietown/lib-dt-authentication'
+maintainer = 'Andrea F. Daniele'
+maintainer_email = 'afdaniele@ttic.edu'
+short_description = 'Python library for authentication in Duckietown using the Duckietown Token'
 full_description = """
-<LONG_DESCRIPTION>
+This library can be used to manipulate Duckietown Tokens.
 """
 # <==: Fill in your project data here
 

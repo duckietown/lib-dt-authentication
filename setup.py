@@ -42,5 +42,6 @@ setup(
     package_dir={"": "include"},
     packages=find_packages('./include'),
     long_description=description,
-    version=version
+    version=version,
+    include_package_data=True
 )

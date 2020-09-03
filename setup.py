@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 
 # :==> Fill in your project data here
-library_name = 'dt_authentication'
+library_name = 'dt-authentication'
 library_webpage = 'https://github.com/duckietown/lib-dt-authentication'
 maintainer = 'Andrea F. Daniele'
 maintainer_email = 'afdaniele@ttic.edu'

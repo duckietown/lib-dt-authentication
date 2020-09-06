@@ -1,1 +1,2 @@
-from .duckietown_token import DuckietownToken, InvalidToken
+from .exceptions import InvalidToken
+from .token import DuckietownToken

@@ -1,11 +1,12 @@
 import json
 import datetime
 from base58 import b58decode
-from ecdsa import VerifyingKey, BadSignatureError
+from ecdsa.keys import VerifyingKey, BadSignatureError
 
+from .exceptions import InvalidToken
 
 PUBLIC_KEY = \
-"""-----BEGIN PUBLIC KEY-----
+    """-----BEGIN PUBLIC KEY-----
 MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEQr/8RJmJZT+Bh1YMb1aqc2ao5teE
 ixOeCMGTO79Dbvw5dGmHJLYyNPwnKkWayyJS
 -----END PUBLIC KEY-----"""
@@ -13,12 +14,7 @@ ixOeCMGTO79Dbvw5dGmHJLYyNPwnKkWayyJS
 PAYLOAD_FIELDS = {'uid', 'exp'}
 
 
-class InvalidToken(Exception):
-    pass
-
-
 class DuckietownToken(object):
-
     VERSION = 'dt1'
 
     def __init__(self, payload, signature):
@@ -39,7 +35,7 @@ class DuckietownToken(object):
         p = s.split('-')
         # check number of components
         if len(p) != 3:
-            raise ValueError(p)
+            raise InvalidToken("The token should be comprised of three (dash-separated) parts")
         # unpack components
         version, payload_base58, signature_base58 = p
         # check token version

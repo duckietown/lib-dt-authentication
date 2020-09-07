@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 # :==> Fill in your project data here
 # The package name is the name on PyPI
 # it is not the python module names.
-package_name = 'dt-data-api'
+package_name = 'dt-authentication'
 library_webpage = 'http://github.com/duckietown/lib-dt-authentication'
 maintainer = 'Andrea F. Daniele'
 maintainer_email = 'afdaniele@ttic.edu'

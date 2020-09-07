@@ -9,7 +9,7 @@ decode a Duckietown Token. For example,
 
     from dt_authentication import DuckietownToken
 
-    token = DuckietownToken("YOU-TOKEN-HERE")
+    token = DuckietownToken.from_string("YOU-TOKEN-HERE")
 
 Where the string ``"YOUR-TOKEN-HERE"`` is replaced with your real Duckietown Token.
 
@@ -17,6 +17,15 @@ Where the string ``"YOUR-TOKEN-HERE"`` is replaced with your real Duckietown Tok
 Code API: dt_authentication
 ===========================
 
+`DuckietownToken`
+-----------------
 
-.. automodule:: dt_authentication
+.. autoclass:: dt_authentication.DuckietownToken
+   :members:
+
+
+Exceptions
+----------
+
+.. autoclass:: dt_authentication.InvalidToken
    :members:

@@ -1,5 +1,8 @@
+import copy
 import json
 import datetime
+from typing import Dict, Union
+
 from base58 import b58decode
 from ecdsa.keys import VerifyingKey, BadSignatureError
 
@@ -15,22 +18,59 @@ PAYLOAD_FIELDS = {'uid', 'exp'}
 
 
 class DuckietownToken(object):
+    """
+    Class modeling a Duckietown Token.
+
+    Args:
+        payload:    The token's payload as a dictionary.
+        signature:  The token's signature.
+    """
     VERSION = 'dt1'
 
-    def __init__(self, payload, signature):
-        self.payload = payload
-        self.signature = signature
+    def __init__(self, payload: Dict[str, Union[str, int]], signature: str):
+        self._payload = payload
+        self._signature = signature
 
     @property
-    def uid(self):
-        return self.payload['uid']
+    def payload(self) -> Dict[str, str]:
+        """
+        The token's payload.
+        """
+        return copy.copy(self._payload)
 
     @property
-    def expiration(self):
-        return datetime.date(*map(int, self.payload['exp'].split('-')))
+    def signature(self) -> str:
+        """
+        The token's signature.
+        """
+        return copy.copy(self._signature)
+
+    @property
+    def uid(self) -> int:
+        """
+        The ID of the user the token belongs to.
+        """
+        return self._payload['uid']
+
+    @property
+    def expiration(self) -> datetime.date:
+        """
+        The token's expiration date.
+        """
+        return datetime.date(*map(int, self._payload['exp'].split('-')))
 
     @staticmethod
-    def from_string(s):
+    def from_string(s: str) -> 'DuckietownToken':
+        """
+        Decodes a Duckietown Token string into an instance of
+        :py:class:`dt_authentication.DuckietownToken`.
+
+        Args:
+            s:  The Duckietown Token string.
+
+        Raises:
+            InvalidToken:   The given token is not valid.
+        """
         # break token into 3 pieces, dt1-PAYLOAD-SIGNATURE
         p = s.split('-')
         # check number of components
@@ -60,4 +100,4 @@ class DuckietownToken(object):
                 len(set(payload.keys()).intersection(PAYLOAD_FIELDS)) != len(PAYLOAD_FIELDS):
             raise InvalidToken("Duckietown Token has an invalid payload")
         # ---
-        return DuckietownToken(payload, signature)
+        return DuckietownToken(payload, str(signature))

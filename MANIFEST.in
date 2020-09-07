@@ -1,1 +1,1 @@
-include .dtproject dependencies.txt
+prune src/dt_authentication_tests

@@ -6,12 +6,11 @@ used to authenticate Duckietown users using the Duckietown Token.
 
 ## Usage
 
-Given a Duckietown Token `dtt`, you can decode it as shown 
-in the following snippet:
+You can decode a Duckietown Token as follows,
 
 ```python
 from dt_authentication import DuckietownToken
 
-token = DuckietownToken.from_string(dtt)
+token = DuckietownToken.from_string("YOUR-TOKEN-HERE")
 print('UID: %r; Expiration: %r' % (token.uid, token.expiration))
 ```

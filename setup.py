@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 # The package name is the name on PyPI
 # it is not the python module names.
 distro = 'daffy'
-package_name = 'dt-{}-authentication'.format(distro)
+package_name = 'dt-authentication-{}'.format(distro)
 library_webpage = 'http://github.com/duckietown/lib-dt-authentication'
 maintainer = 'Andrea F. Daniele'
 maintainer_email = 'afdaniele@ttic.edu'

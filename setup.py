@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 # :==> Fill in your project data here
 # The package name is the name on PyPI
 # it is not the python module names.
-distro = 'daffy'
+distro = 'ente'
 package_name = 'dt-authentication-{}'.format(distro)
 library_webpage = 'http://github.com/duckietown/lib-dt-authentication'
 maintainer = 'Andrea F. Daniele'

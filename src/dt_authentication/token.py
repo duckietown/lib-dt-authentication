@@ -8,13 +8,12 @@ from ecdsa.keys import VerifyingKey, BadSignatureError
 
 from .exceptions import InvalidToken
 
-PUBLIC_KEY = \
-    """-----BEGIN PUBLIC KEY-----
+PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
 MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEQr/8RJmJZT+Bh1YMb1aqc2ao5teE
 ixOeCMGTO79Dbvw5dGmHJLYyNPwnKkWayyJS
 -----END PUBLIC KEY-----"""
 
-PAYLOAD_FIELDS = {'uid', 'exp'}
+PAYLOAD_FIELDS = {"uid", "exp"}
 
 
 class DuckietownToken(object):
@@ -25,7 +24,8 @@ class DuckietownToken(object):
         payload:    The token's payload as a dictionary.
         signature:  The token's signature.
     """
-    VERSION = 'dt1'
+
+    VERSION = "dt1"
 
     def __init__(self, payload: Dict[str, Union[str, int]], signature: str):
         self._payload = payload
@@ -50,17 +50,17 @@ class DuckietownToken(object):
         """
         The ID of the user the token belongs to.
         """
-        return self._payload['uid']
+        return self._payload["uid"]
 
     @property
     def expiration(self) -> datetime.date:
         """
         The token's expiration date.
         """
-        return datetime.date(*map(int, self._payload['exp'].split('-')))
+        return datetime.date(*map(int, self._payload["exp"].split("-")))
 
     @staticmethod
-    def from_string(s: str) -> 'DuckietownToken':
+    def from_string(s: str) -> "DuckietownToken":
         """
         Decodes a Duckietown Token string into an instance of
         :py:class:`dt_authentication.DuckietownToken`.
@@ -72,10 +72,12 @@ class DuckietownToken(object):
             InvalidToken:   The given token is not valid.
         """
         # break token into 3 pieces, dt1-PAYLOAD-SIGNATURE
-        p = s.split('-')
+        p = s.split("-")
         # check number of components
         if len(p) != 3:
-            raise InvalidToken("The token should be comprised of three (dash-separated) parts")
+            raise InvalidToken(
+                "The token should be comprised of three (dash-separated) parts"
+            )
         # unpack components
         version, payload_base58, signature_base58 = p
         # check token version
@@ -96,8 +98,9 @@ class DuckietownToken(object):
             raise InvalidToken("Duckietown Token not valid")
         # unpack payload
         payload = json.loads(payload_json.decode("utf-8"))
-        if not isinstance(payload, dict) or \
-                len(set(payload.keys()).intersection(PAYLOAD_FIELDS)) != len(PAYLOAD_FIELDS):
+        if not isinstance(payload, dict) or len(
+            set(payload.keys()).intersection(PAYLOAD_FIELDS)
+        ) != len(PAYLOAD_FIELDS):
             raise InvalidToken("Duckietown Token has an invalid payload")
         # ---
         return DuckietownToken(payload, str(signature))

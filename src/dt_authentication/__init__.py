@@ -1,4 +1,4 @@
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 
 from .exceptions import InvalidToken
 from .token import DuckietownToken

@@ -3,7 +3,7 @@ import json
 import datetime
 from typing import Dict, Union
 
-from base58 import b58decode
+from base58 import b58decode, b58encode
 from ecdsa.keys import VerifyingKey, BadSignatureError
 
 from .exceptions import InvalidToken
@@ -27,9 +27,19 @@ class DuckietownToken(object):
     """
     VERSION = 'dt1'
 
-    def __init__(self, payload: Dict[str, Union[str, int]], signature: str):
-        self._payload = payload
-        self._signature = signature
+    def __init__(self, payload: Dict[str, Union[str, int]], signature: Union[str, bytes]):
+        """
+        Creates a Duckietown Token from a payload and a signature.
+
+        Most users will create instances of this class using the method
+        :py:method:`dt_authentication.DuckietownToken.from_string` instead of instantiating this
+        class directly.
+
+        :param payload:     A dictionary containing the token payload
+        :param signature:   A signature, either as a base58 encoded string or as raw bytes
+        """
+        self._payload: Dict[str, Union[str, int]] = payload
+        self._signature: bytes = signature if isinstance(signature, (bytes,)) else b58decode(signature)
 
     @property
     def payload(self) -> Dict[str, str]:
@@ -39,7 +49,7 @@ class DuckietownToken(object):
         return copy.copy(self._payload)
 
     @property
-    def signature(self) -> str:
+    def signature(self) -> bytes:
         """
         The token's signature.
         """
@@ -58,6 +68,18 @@ class DuckietownToken(object):
         The token's expiration date.
         """
         return datetime.date(*map(int, self._payload['exp'].split('-')))
+
+    def as_string(self) -> str:
+        """
+        Returns the Duckietown Token string.
+        """
+        # encode payload into JSON
+        payload_json: str = json.dumps(self._payload)
+        # encode payload and signature
+        payload_base58: str = b58encode(payload_json).decode("utf-8")
+        signature_base58: str = b58encode(self._signature).decode("utf-8")
+        # compile token
+        return f"{self.VERSION}-{payload_base58}-{signature_base58}"
 
     @staticmethod
     def from_string(s: str) -> 'DuckietownToken':
@@ -100,4 +122,4 @@ class DuckietownToken(object):
                 len(set(payload.keys()).intersection(PAYLOAD_FIELDS)) != len(PAYLOAD_FIELDS):
             raise InvalidToken("Duckietown Token has an invalid payload")
         # ---
-        return DuckietownToken(payload, str(signature))
+        return DuckietownToken(payload, signature)

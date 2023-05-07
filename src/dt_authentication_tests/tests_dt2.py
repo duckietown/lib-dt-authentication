@@ -91,7 +91,7 @@ def test_create_never_expires():
 def test_already_expired():
     s: str = "dt2-FifqUXc5FqUotojkAUPJcyTpMcCh8x8xonB8Dc6PLo3VZcQGUcukHiYBzTjHAzkDEF9xApqFvvLc8L-" \
              "43dzqWFnWd8KBa1yev1g3UKnzVxZkkTbfkRuAQ3kSBB4pz9LGE8epBAfwwttWthQ9b"
-    token = DuckietownToken.from_string(s)
+    token = DuckietownToken.from_string(s, allow_expired=True)
     assert token.expired
 
 

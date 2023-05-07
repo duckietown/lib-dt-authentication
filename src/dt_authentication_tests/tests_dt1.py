@@ -28,7 +28,7 @@ def date(d) -> datetime.date:
 
 
 def test1():
-    token = DuckietownToken.from_string(SAMPLE_TOKEN)
+    token = DuckietownToken.from_string(SAMPLE_TOKEN, allow_expired=True)
     assert token.version == "dt1"
     data = token.payload
 
@@ -48,10 +48,10 @@ def test1():
     else:
         raise Exception(token)
 
-    assert SAMPLE_TOKEN_UID == get_id_from_token(SAMPLE_TOKEN)
+    assert SAMPLE_TOKEN_UID == get_id_from_token(SAMPLE_TOKEN, allow_expired=True)
 
     try:
-        get_id_from_token(msg_bad)
+        get_id_from_token(msg_bad, allow_expired=True)
     except InvalidToken:
         pass
     else:

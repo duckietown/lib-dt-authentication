@@ -39,10 +39,10 @@ def get_or_create_key_pair(version: str, path: str) -> Tuple[SigningKey, Verifyi
     return sk, vk
 
 
-def get_id_from_token(s: str) -> int:
+def get_id_from_token(s: str, *args, **kwargs) -> int:
     """
     Returns a numeric ID from the token, or raises InvalidToken.
 
     """
-    token = DuckietownToken.from_string(s)
+    token = DuckietownToken.from_string(s, *args, **kwargs)
     return token.uid

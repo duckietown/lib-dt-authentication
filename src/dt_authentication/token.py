@@ -8,7 +8,7 @@ from base58 import b58decode, b58encode
 from ecdsa import NIST192p
 from ecdsa.keys import VerifyingKey, BadSignatureError, SigningKey
 
-from .exceptions import InvalidToken
+from .exceptions import InvalidToken, ExpiredToken
 from .scope import Scope
 
 PUBLIC_KEYS = {
@@ -141,14 +141,16 @@ class DuckietownToken(object):
         return False
 
     @staticmethod
-    def from_string(s: str, vk: Optional[VerifyingKey] = None) -> 'DuckietownToken':
+    def from_string(s: str, vk: Optional[VerifyingKey] = None, allow_expired: bool = False) \
+            -> 'DuckietownToken':
         """
         Decodes a Duckietown Token string into an instance of
         :py:class:`dt_authentication.DuckietownToken`.
 
         Args:
-            s:   The Duckietown Token string.
-            vk:  Optional verification key if different from default
+            s:                  The Duckietown Token string.
+            vk:                 Optional verification key if different from default
+            allow_expired:      Do not throw exception if token expired
 
         Raises:
             InvalidToken:   The given token is not valid.
@@ -185,8 +187,13 @@ class DuckietownToken(object):
         # parse scope
         if "scope" in payload:
             payload["scope"] = [Scope.parse(s) for s in payload["scope"]]
+        # create token object
+        token = DuckietownToken(version, payload, signature)
+        # make sure the token is not expired
+        if not allow_expired and token.expired:
+            raise ExpiredToken("This token is expired. Obtain a new one.")
         # ---
-        return DuckietownToken(version, payload, signature)
+        return token
 
     @classmethod
     def generate(cls, key: SigningKey, user_id: int, days: int = 365, hours: int = 0, minutes: int = 0,

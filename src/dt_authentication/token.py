@@ -205,7 +205,7 @@ class DuckietownToken(object):
 
     @classmethod
     def generate(cls, key: SigningKey, user_id: int, days: int = 365, hours: int = 0, minutes: int = 0,
-                 scope: ScopeList = None) -> 'DuckietownToken':
+                 scope: ScopeList = None, version: str = DEFAULT_VERSION) -> 'DuckietownToken':
         if scope is None:
             scope = DEFAULT_SCOPE
         # make sure the scope is valid
@@ -223,7 +223,7 @@ class DuckietownToken(object):
         if (days + hours + minutes) > 0:
             now = datetime.datetime.now()
             delta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
-            exp = (now + delta).strftime(DATETIME_FORMAT[DEFAULT_VERSION])
+            exp = (now + delta).strftime(DATETIME_FORMAT[version])
         # form payload
         payload = {"uid": user_id, "scope": scope_encoded, "exp": exp}
 
@@ -235,4 +235,4 @@ class DuckietownToken(object):
         signature = key.sign(payload_bytes, entropy=entropy)
 
         payload["scope"] = scope_parsed
-        return DuckietownToken(DEFAULT_VERSION, payload, signature)
+        return DuckietownToken(version, payload, signature)

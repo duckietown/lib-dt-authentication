@@ -141,7 +141,7 @@ class DuckietownToken(object):
         return False
 
     @staticmethod
-    def from_string(s: str, vk: Optional[VerifyingKey] = None, allow_expired: bool = False) \
+    def from_string(s: str, vk: Optional[VerifyingKey] = None, allow_expired: bool = True) \
             -> 'DuckietownToken':
         """
         Decodes a Duckietown Token string into an instance of

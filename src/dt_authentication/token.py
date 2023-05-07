@@ -71,7 +71,7 @@ class DuckietownToken(object):
         return self._version
 
     @property
-    def payload(self) -> Dict[str, str]:
+    def payload(self) -> Dict[str, object]:
         """
         The token's payload.
         """
@@ -99,7 +99,7 @@ class DuckietownToken(object):
         return self._payload.get("scope", DEFAULT_SCOPE)
 
     @property
-    def expiration(self) -> Optional[datetime.date]:
+    def expiration(self) -> Optional[datetime.datetime]:
         """
         The token's expiration date.
         """
@@ -121,17 +121,24 @@ class DuckietownToken(object):
         """
         Returns the Duckietown Token string.
         """
-        # encode scope
-        scope: List[Union[str, dict]] = [s.compact() for s in self.scope]
         # encode payload into JSON
-        payload = copy.deepcopy(self._payload)
-        payload["scope"] = scope
-        payload_json: str = json.dumps(payload, sort_keys=True)
+        payload_json: str = self.payload_as_json()
         # encode payload and signature
         payload_base58: str = b58encode(payload_json).decode("utf-8")
         signature_base58: str = b58encode(self._signature).decode("utf-8")
         # compile token
         return f"{self._version}-{payload_base58}-{signature_base58}"
+
+    def payload_as_json(self, sort_keys: bool = True, **kwargs) -> str:
+        """
+        The token's payload as JSON string.
+        """
+        # encode scope
+        scope: List[Union[str, dict]] = [s.compact() for s in self.scope]
+        # encode payload into JSON
+        payload = copy.deepcopy(self._payload)
+        payload["scope"] = scope
+        return json.dumps(payload, sort_keys=sort_keys, **kwargs)
 
     def grants(self, action: str, resource: Optional[str] = None, identifier: Optional[str] = None,
                service: Optional[str] = None) -> bool:
@@ -154,6 +161,7 @@ class DuckietownToken(object):
 
         Raises:
             InvalidToken:   The given token is not valid.
+            ExpiredToken:   The given token is expired.
         """
         # break token into 3 pieces, dt1-PAYLOAD-SIGNATURE
         p = s.split('-')

@@ -76,7 +76,7 @@ def test_create_simple():
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID)
         token.from_string(token.as_string(), vk=vk)
-        assert not token.expired
+    assert not token.expired
 
 
 def test_create_never_expires():
@@ -84,8 +84,9 @@ def test_create_never_expires():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, days=days)
-        assert token.expiration is None
-        assert not token.expired
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert token.expiration is None
+    assert not token.expired
 
 
 def test_already_expired():
@@ -100,8 +101,9 @@ def test_scope_action():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
-        assert scope(token.scope) == scope(s)
-        assert token.grants(s[0].action)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert scope(token.scope) == scope(s)
+    assert token.grants(s[0].action)
 
 
 def test_scope_resource():
@@ -109,8 +111,9 @@ def test_scope_resource():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
-        assert scope(token.scope) == scope(s)
-        assert token.grants(s[0].action, s[0].resource)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert token.grants(s[0].action, s[0].resource)
 
 
 def test_scope_resource_id():
@@ -118,8 +121,9 @@ def test_scope_resource_id():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
-        assert scope(token.scope) == scope(s)
-        assert token.grants(s[0].action, s[0].resource, s[0].identifier)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert token.grants(s[0].action, s[0].resource, s[0].identifier)
 
 
 def test_scope_service():
@@ -127,8 +131,9 @@ def test_scope_service():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
-        assert scope(token.scope) == scope(s)
-        assert token.grants(s[0].action, s[0].resource, s[0].identifier, s[0].service)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert token.grants(s[0].action, s[0].resource, s[0].identifier, s[0].service)
 
 
 def test_scope_not_granted():
@@ -136,10 +141,80 @@ def test_scope_not_granted():
     with tempfile.TemporaryDirectory() as tmp:
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    try:
+        # this is a less restricted scope than the one assigned
+        assert token.grants("create")
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("A token was granting a larger scope than expected")
+
+
+def test_not_renewable():
+    s: List[Scope] = [Scope("create", "class")]
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert not token.renewable
+    assert token.duration is None
+
+
+def test_renewable():
+    s: List[Scope] = [Scope("create", "class")]
+    d, h, m = 13, 45, 27
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s,
+                                         days=d, hours=h, minutes=m, renewable=True)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert token.renewable
+    assert isinstance(token.duration, int)
+    assert token.duration == d * 1440 + h * 60 + m
+
+
+def test_renew_not_renewable():
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        # generate first token
+        token1 = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, minutes=5)
+        token1 = DuckietownToken.from_string(token1.as_string(), vk=vk)
+        # ask for a new token
         try:
-            # this is a less restricted scope than the one assigned
-            assert token.grants("create")
-        except AssertionError:
+            _ = token1.renew(sk)
+        except ValueError:
             pass
         else:
-            raise AssertionError("Expected to raise")
+            raise AssertionError("We were able to renew a non-renewable token")
+
+
+def test_renew():
+    data = {"a": 27, "b": 32.4, "c": None, "d": [12, 13.5, None, {}, []]}
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        # generate first token
+        token1 = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, minutes=5, data=data, renewable=True)
+        token1 = DuckietownToken.from_string(token1.as_string(), vk=vk)
+        # ask for a new token
+        # NOTE: this will fail if the system clock bumps the minutes at this point
+        token2 = token1.renew(sk)
+    assert token1.payload_as_json() == token2.payload_as_json()
+
+
+def test_empty_data():
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert token.data is None
+
+
+def test_data1():
+    data = {"a": 27, "b": 32.4, "c": None, "d": [12, 13.5, None, {}, []]}
+    with tempfile.TemporaryDirectory() as tmp:
+        sk, vk = get_or_create_key_pair("dt2", tmp)
+        token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, data=data)
+        token = DuckietownToken.from_string(token.as_string(), vk=vk)
+    assert isinstance(token.data, dict)
+    assert json.dumps(data, sort_keys=True) == json.dumps(token.data, sort_keys=True)

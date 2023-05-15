@@ -7,7 +7,7 @@ distro = "daffy"
 package_name = "dt-authentication-{}".format(distro)
 library_webpage = "http://github.com/duckietown/lib-dt-authentication"
 maintainer = "Andrea F. Daniele"
-maintainer_email = "afdaniele@ttic.edu"
+maintainer_email = "afdaniele@duckietown.com"
 short_description = "Authentication client library used to decode Duckietown Tokens"
 full_description = """
 Authentication client library used to decode Duckietown Tokens.
@@ -57,7 +57,11 @@ description = """
     underline=underline,
 )
 
-console_scripts = []
+console_scripts = [
+    "dt-tokens-generate = dt_authentication.cli:cli_generate",
+    "dt-tokens-verify = dt_authentication.cli:cli_verify",
+]
+
 # setup package
 setup(
     name=package_name,

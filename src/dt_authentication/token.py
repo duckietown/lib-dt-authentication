@@ -1,19 +1,43 @@
 import copy
-import json
 import datetime
-from typing import Dict, Union
+import json
+from typing import Dict, Union, List, Optional
 
-from base58 import b58decode
-from ecdsa.keys import VerifyingKey, BadSignatureError
+from base58 import b58decode, b58encode
 
-from .exceptions import InvalidToken
+# noinspection PyProtectedMember
+from ecdsa import NIST192p
+from ecdsa.keys import VerifyingKey, BadSignatureError, SigningKey
 
-PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
+from .exceptions import InvalidToken, ExpiredToken
+from .scope import Scope
+
+PUBLIC_KEYS = {
+    # dt1 was introduced in 2017
+    "dt1": """-----BEGIN PUBLIC KEY-----
 MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEQr/8RJmJZT+Bh1YMb1aqc2ao5teE
 ixOeCMGTO79Dbvw5dGmHJLYyNPwnKkWayyJS
------END PUBLIC KEY-----"""
+-----END PUBLIC KEY-----""",
+    # dt2 was introduced in May 2023
+    "dt2": """-----BEGIN PUBLIC KEY-----
+MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEHIqMBPGB2tzRgrMKhQSkEiKQ317q
+msEAqq1CS86oV1vjHYVq6FLvtnDsuWzbW2Nz
+-----END PUBLIC KEY-----""",
+}
+DATETIME_FORMAT = {"dt1": "%Y-%m-%d", "dt2": "%Y-%m-%d/%H:%M"}
 
 PAYLOAD_FIELDS = {"uid", "exp"}
+CURVE = NIST192p
+SUPPORTED_VERSIONS = ["dt1", "dt2"]
+SUPPORTED_FIELDS = {
+    "dt1": [],
+    "dt2": ["scope", "data", "duration"],
+}
+DEFAULT_VERSION = "dt2"
+
+
+ScopeList = List[Union[Scope, str]]
+DEFAULT_SCOPE = [Scope(action="auth")]
 
 
 class DuckietownToken(object):
@@ -25,21 +49,45 @@ class DuckietownToken(object):
         signature:  The token's signature.
     """
 
-    VERSION = "dt1"
+    def __init__(
+        self,
+        version: str,
+        payload: Dict[str, Union[str, int]],
+        signature: Union[str, bytes],
+    ):
+        """
+        Creates a Duckietown Token from a payload and a signature.
 
-    def __init__(self, payload: Dict[str, Union[str, int]], signature: str):
-        self._payload = payload
-        self._signature = signature
+        Most users will create instances of this class using the method
+        :py:method:`dt_authentication.DuckietownToken.from_string` instead of instantiating this
+        class directly.
+
+        :param version:     A string indicating the version of the token
+        :param payload:     A dictionary containing the token payload
+        :param signature:   A signature, either as a base58 encoded string or as raw bytes
+        """
+        self._version: str = version
+        self._payload: Dict[str, Union[str, int, list]] = payload
+        self._signature: bytes = (
+            signature if isinstance(signature, (bytes,)) else b58decode(signature)
+        )
 
     @property
-    def payload(self) -> Dict[str, str]:
+    def version(self) -> str:
+        """
+        The version of this token
+        """
+        return self._version
+
+    @property
+    def payload(self) -> Dict[str, object]:
         """
         The token's payload.
         """
         return copy.copy(self._payload)
 
     @property
-    def signature(self) -> str:
+    def signature(self) -> bytes:
         """
         The token's signature.
         """
@@ -53,23 +101,120 @@ class DuckietownToken(object):
         return self._payload["uid"]
 
     @property
-    def expiration(self) -> datetime.date:
+    def scope(self) -> List[Scope]:
+        """
+        The scope of this token.
+        """
+        return self._payload.get("scope", DEFAULT_SCOPE)
+
+    @property
+    def data(self) -> Optional[dict]:
+        """
+        The data baked into the token.
+        """
+        return self._payload.get("data", None)
+
+    @property
+    def duration(self) -> Optional[int]:
+        """
+        The duration of the token in minutes.
+        """
+        return self._payload.get("duration", None)
+
+    @property
+    def renewable(self) -> bool:
+        """
+        Whether the token can be renewed.
+        """
+        return self.duration is not None
+
+    @property
+    def expiration(self) -> Optional[datetime.datetime]:
         """
         The token's expiration date.
         """
-        return datetime.date(*map(int, self._payload["exp"].split("-")))
+        if self._payload["exp"] is None:
+            return None
+        return datetime.datetime.strptime(
+            self._payload["exp"], DATETIME_FORMAT[self._version]
+        )
+
+    @property
+    def expired(self) -> bool:
+        """Whether the token is already expired"""
+        exp: Optional[datetime.date] = self.expiration
+        if exp is None:
+            # never-expiring tokens
+            return False
+        # compare now() with token expiration date
+        return exp < datetime.datetime.now()
+
+    def as_string(self) -> str:
+        """
+        Returns the Duckietown Token string.
+        """
+        # encode payload into JSON
+        payload_json: str = self.payload_as_json()
+        # encode payload and signature
+        payload_base58: str = b58encode(payload_json).decode("utf-8")
+        signature_base58: str = b58encode(self._signature).decode("utf-8")
+        # compile token
+        return f"{self._version}-{payload_base58}-{signature_base58}"
+
+    def payload_as_json(self, sort_keys: bool = True, **kwargs) -> str:
+        """
+        The token's payload as JSON string.
+        """
+        # encode scope
+        scope: List[Union[str, dict]] = [s.compact() for s in self.scope]
+        # encode payload into JSON
+        payload = copy.deepcopy(self._payload)
+        payload["scope"] = scope
+        return json.dumps(payload, sort_keys=sort_keys, **kwargs)
+
+    def grants(
+        self,
+        action: str,
+        resource: Optional[str] = None,
+        identifier: Optional[str] = None,
+        service: Optional[str] = None,
+    ) -> bool:
+        for s in self.scope:
+            if s.grants(action, resource, identifier, service):
+                return True
+        return False
+
+    def renew(self, key: SigningKey):
+        # make sure the token is renewable
+        if not self.renewable:
+            raise ValueError("This token is not renewable")
+        # generate new token
+        return self.generate(
+            key,
+            self.uid,
+            minutes=self.duration,
+            renewable=True,
+            data=self.data,
+            scope=self.scope,
+            version=self.version,
+        )
 
     @staticmethod
-    def from_string(s: str) -> "DuckietownToken":
+    def from_string(
+        s: str, vk: Optional[VerifyingKey] = None, allow_expired: bool = True
+    ) -> "DuckietownToken":
         """
         Decodes a Duckietown Token string into an instance of
         :py:class:`dt_authentication.DuckietownToken`.
 
         Args:
-            s:  The Duckietown Token string.
+            s:                  The Duckietown Token string.
+            vk:                 Optional verification key if different from default
+            allow_expired:      Do not throw exception if token expired
 
         Raises:
             InvalidToken:   The given token is not valid.
+            ExpiredToken:   The given token is expired.
         """
         # break token into 3 pieces, dt1-PAYLOAD-SIGNATURE
         p = s.split("-")
@@ -81,13 +226,14 @@ class DuckietownToken(object):
         # unpack components
         version, payload_base58, signature_base58 = p
         # check token version
-        if version != DuckietownToken.VERSION:
+        if version not in SUPPORTED_VERSIONS:
             raise InvalidToken("Duckietown Token version '%s' not supported" % version)
         # decode payload and signature
         payload_json = b58decode(payload_base58)
         signature = b58decode(signature_base58)
         # verify token
-        vk = VerifyingKey.from_pem(PUBLIC_KEY)
+        if not vk:
+            vk = VerifyingKey.from_pem(PUBLIC_KEYS[version])
         is_valid = False
         try:
             is_valid = vk.verify(signature, payload_json)
@@ -102,5 +248,98 @@ class DuckietownToken(object):
             set(payload.keys()).intersection(PAYLOAD_FIELDS)
         ) != len(PAYLOAD_FIELDS):
             raise InvalidToken("Duckietown Token has an invalid payload")
+        # parse scope
+        if "scope" in payload:
+            payload["scope"] = [Scope.parse(s) for s in payload["scope"]]
+        # create token object
+        token = DuckietownToken(version, payload, signature)
+        # make sure the token is not expired
+        if not allow_expired and token.expired:
+            raise ExpiredToken("This token is expired. Obtain a new one.")
         # ---
-        return DuckietownToken(payload, str(signature))
+        return token
+
+    @classmethod
+    def generate(
+        cls,
+        key: SigningKey,
+        user_id: int,
+        *,
+        # duration
+        days: int = 0,
+        hours: int = 0,
+        minutes: int = 0,
+        # payload
+        renewable: bool = False,
+        data: Optional[dict] = None,
+        scope: ScopeList = None,
+        # metadata
+        version: str = DEFAULT_VERSION,
+    ) -> "DuckietownToken":
+        # get supported fields for version
+        fields = SUPPORTED_FIELDS[version]
+        # compute expiration date
+        exp = None
+        if (days + hours + minutes) > 0:
+            now = datetime.datetime.now()
+            delta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
+            exp = (now + delta).strftime(DATETIME_FORMAT[version])
+        # initialize payload
+        payload = {"uid": user_id, "exp": exp}
+        # - scope
+        if "scope" in fields:
+            # sanitize scope
+            if scope is None:
+                scope = DEFAULT_SCOPE
+            else:
+                # a scope list is given, prepend the default scope to it
+                for s in DEFAULT_SCOPE:
+                    if s not in scope:
+                        scope = [s] + scope
+            # make sure the scope is valid
+            if not isinstance(scope, list):
+                raise ValueError("Argument 'scope' must be a list")
+            scope_parsed: List[Scope] = []
+            scope_encoded: List[Union[str, dict]] = []
+            for s in scope:
+                if not isinstance(s, Scope):
+                    s = Scope.parse(s)
+                scope_parsed.append(s)
+                scope_encoded.append(s.compact())
+            # ---
+            # noinspection PyTypedDict
+            payload["scope"] = scope_encoded
+
+        # - data
+        if "data" in fields:
+            # check data
+            if data is not None:
+                if not isinstance(data, dict):
+                    raise ValueError("Argument 'data' must be a dictionary")
+                try:
+                    json.dumps(data)
+                except TypeError:
+                    raise ValueError("The given 'data' is not JSON-serializable")
+                # ---
+                payload["data"] = data
+
+        # - duration
+        if "duration" in fields:
+            # add duration (only if renewable)
+            if renewable:
+                payload["duration"] = days * 1440 + hours * 60 + minutes
+
+        def entropy(numbytes):
+            e = b"duckietown is a place of relaxed introspection, and hub extends this place a lot"
+            return e[:numbytes]
+
+        # compile payload
+        payload_bytes = str.encode(json.dumps(payload, sort_keys=True))
+        signature = key.sign(payload_bytes, entropy=entropy)
+
+        # - scope
+        if "scope" in fields:
+            # noinspection PyUnboundLocalVariable
+            payload["scope"] = scope_parsed
+
+        return DuckietownToken(version, payload, signature)

@@ -4,3 +4,11 @@ class InvalidToken(BaseException):
     """
 
     pass
+
+
+class ExpiredToken(BaseException):
+    """
+    An expired Duckietown Token was encountered
+    """
+
+    pass

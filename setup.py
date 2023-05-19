@@ -58,6 +58,7 @@ description = """
 console_scripts = [
     "dt-tokens-generate = dt_authentication.cli:cli_generate",
     "dt-tokens-verify = dt_authentication.cli:cli_verify",
+    "dt-tokens-keygen = dt_authentication.cli:cli_keygen",
 ]
 
 # setup package

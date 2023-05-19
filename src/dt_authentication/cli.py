@@ -1,13 +1,15 @@
 import argparse
 import datetime
 import logging
+import os
 import sys
 
 # noinspection PyProtectedMember
-from ecdsa import SigningKey
+from ecdsa import SigningKey, VerifyingKey
 from future import builtins
 
 from dt_authentication import DuckietownToken, InvalidToken
+from dt_authentication.utils import get_or_create_key_pair
 
 logging.basicConfig()
 logger = logging.getLogger("duckietown-tokens ")
@@ -78,6 +80,30 @@ def cli_generate(args=None):
         scope=None,
     )
     _print_token_info(token)
+
+
+def cli_keygen(args=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", type=str, default="dt2", help="Version of the token")
+    args = parser.parse_args(args=args)
+    # create keys
+    sk, vk = get_or_create_key_pair(args.version, os.getcwd())
+    _print_keys(sk, vk)
+
+
+def _print_keys(sk: SigningKey, vk: VerifyingKey):
+    print(f"""
+SigningKey:
+===========
+
+{sk.to_pem().decode()}
+
+
+Verifying Key:
+==============
+
+{vk.to_pem().decode()}
+""")
 
 
 def _print_token_info(token: DuckietownToken):

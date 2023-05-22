@@ -5,6 +5,7 @@ import tempfile
 from typing import List
 
 from dt_authentication import DuckietownToken, InvalidToken
+from dt_authentication.exceptions import NotARenewableToken
 from dt_authentication.token import DEFAULT_SCOPE, Scope
 from dt_authentication.utils import get_id_from_token, get_or_create_key_pair
 
@@ -183,7 +184,7 @@ def test_renew_not_renewable():
         # ask for a new token
         try:
             _ = token1.renew(sk)
-        except ValueError:
+        except NotARenewableToken:
             pass
         else:
             raise AssertionError("We were able to renew a non-renewable token")
@@ -218,3 +219,13 @@ def test_data1():
         token = DuckietownToken.from_string(token.as_string(), vk=vk)
     assert isinstance(token.data, dict)
     assert json.dumps(data, sort_keys=True) == json.dumps(token.data, sort_keys=True)
+
+
+def test_renew_online():
+    token = DuckietownToken.from_string(SAMPLE_TOKEN)
+    try:
+        token.renew()
+    except NotARenewableToken:
+        pass
+    else:
+        raise Exception("We managed to renew a token that was not supposed to be renewable")

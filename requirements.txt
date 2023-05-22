@@ -27,3 +27,4 @@ jupyter
 # library deps
 base58
 ecdsa
+requests

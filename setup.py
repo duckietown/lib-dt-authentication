@@ -42,7 +42,8 @@ version = get_version_from_source('src/dt_authentication/__init__.py')
 
 install_requires = [
     'base58',
-    'ecdsa'
+    'ecdsa',
+    'requests'
 ]
 tests_require = []
 

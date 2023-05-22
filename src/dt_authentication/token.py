@@ -1,14 +1,16 @@
 import copy
 import datetime
 import json
+import os
 from typing import Dict, Union, List, Optional
 
+import requests
 from base58 import b58decode, b58encode
 # noinspection PyProtectedMember
 from ecdsa import NIST192p
 from ecdsa.keys import VerifyingKey, BadSignatureError, SigningKey
 
-from .exceptions import InvalidToken, ExpiredToken
+from .exceptions import InvalidToken, ExpiredToken, GenericException, NotARenewableToken
 from .scope import Scope
 
 PUBLIC_KEYS = {
@@ -40,6 +42,9 @@ DEFAULT_VERSION = "dt2"
 
 ScopeList = List[Union[Scope, str]]
 DEFAULT_SCOPE = [Scope(action="auth")]
+
+TOKEN_RENEW_ONLINE_HOST = os.environ.get("DT_TOKEN_RENEW_HOST", "hub.duckietown.com")
+TOKEN_RENEW_ONLINE_URL = f"https://{TOKEN_RENEW_ONLINE_HOST}/api/v1/auth/token/renew"
 
 
 class DuckietownToken(object):
@@ -167,25 +172,78 @@ class DuckietownToken(object):
 
     def grants(self, action: str, resource: Optional[str] = None, identifier: Optional[str] = None,
                service: Optional[str] = None) -> bool:
+        """
+        Checks whether this token grants the given scope.
+
+        :param action:      Action of the scope to check for
+        :param resource:    Resource of the scope to check for
+        :param identifier:  Resource identifier of the scope to check for
+        :param service:     Service of the scope to check for
+        :return:            'True' if this token grants this scope, 'False' otherwise.
+        """
         for s in self.scope:
             if s.grants(action, resource, identifier, service):
                 return True
         return False
 
-    def renew(self, key: SigningKey):
+    def renew(self, key: Optional[SigningKey] = None, in_place: bool = False) -> 'DuckietownToken':
+        """
+        Renews this token using the given signing key or by reaching out to the remote Duckietown auth
+        service if no keys are given.
+
+        :param key:         (Optional) Signing key to use to sign the new token.
+        :param in_place:    Update this very instance with the new token.
+        :return:            A new token with the same scope and duration of the old one.
+        """
         # make sure the token is renewable
         if not self.renewable:
-            raise ValueError("This token is not renewable")
-        # generate new token
-        return self.generate(
-            key,
-            self.uid,
-            minutes=self.duration,
-            renewable=True,
-            data=self.data,
-            scope=self.scope,
-            version=self.version,
-        )
+            raise NotARenewableToken()
+
+        if key is not None:
+            # generate new token with the given key
+            new: DuckietownToken = self.generate(
+                key,
+                self.uid,
+                minutes=self.duration,
+                renewable=True,
+                data=self.data,
+                scope=self.scope,
+                version=self.version,
+            )
+        else:
+            # request new token
+            try:
+                response = requests.get(
+                    url=TOKEN_RENEW_ONLINE_URL,
+                    headers={
+                        "Authorization": f"Token {self.as_string()}"
+                    }
+                ).json()
+            except requests.RequestException as e:
+                raise e
+            except requests.JSONDecodeError as e:
+                raise e
+            # ---
+            if not response["success"]:
+                raise GenericException(response["messages"])
+            # parse new token
+            new: DuckietownToken = DuckietownToken.from_string(response["result"]["token"])
+        # apply in-place edits
+        if in_place:
+            # copy token content
+            self.copy_from(new)
+        # ---
+        return new
+
+    def copy_from(self, other: 'DuckietownToken'):
+        """
+        Turns this instance into an exact copy of the given token.
+
+        :param other:   The token to duplicate.
+        """
+        self._version = other._version
+        self._payload = other._payload
+        self._signature = other._signature
 
     @staticmethod
     def from_string(s: str, vk: Optional[VerifyingKey] = None, allow_expired: bool = True) \

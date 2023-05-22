@@ -1,8 +1,8 @@
 import argparse
 import datetime
 import logging
-import os
 import sys
+import tempfile
 
 # noinspection PyProtectedMember
 from ecdsa import SigningKey, VerifyingKey
@@ -36,11 +36,6 @@ def cli_verify(args=None):
             logger.error(msg)
             sys.exit(1)
 
-        if token.expired:
-            msg = f"This token has expired on {token.expiration}"
-            logger.error(msg)
-            sys.exit(2)
-
         _print_token_info(token)
         sys.exit(0)
     except Exception as e:
@@ -52,9 +47,11 @@ def cli_generate(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--uid", type=int, help="ID to sign")
     parser.add_argument("--key", type=str, help="Path to signing key")
-    parser.add_argument("--ndays", type=int, default=365, help="Number of days for validity")
+    parser.add_argument("--ndays", type=int, default=0, help="Number of days for validity")
     parser.add_argument("--nhours", type=int, default=0, help="Number of hours for validity")
     parser.add_argument("--nminutes", type=int, default=0, help="Number of minutes for validity")
+    parser.add_argument("--renewable", action="store_true", default=False, help="Make a renewable token")
+    parser.add_argument("--scope", type=str, default=None, help="Scope as compact comma-separated list")
 
     args = parser.parse_args(args=args)
 
@@ -77,7 +74,8 @@ def cli_generate(args=None):
         days=args.ndays,
         hours=args.nhours,
         minutes=args.nminutes,
-        scope=None,
+        scope=args.scope.split(",") if args.scope else None,
+        renewable=args.renewable
     )
     _print_token_info(token)
 
@@ -85,9 +83,15 @@ def cli_generate(args=None):
 def cli_keygen(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", type=str, default="dt2", help="Version of the token")
+    parser.add_argument("--out", type=str, default=None, help="Directory where to write the keys "
+                                                              "(default: print only)")
     args = parser.parse_args(args=args)
     # create keys
-    sk, vk = get_or_create_key_pair(args.version, os.getcwd())
+    if args.out:
+        sk, vk = get_or_create_key_pair(args.version, args.out)
+    else:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            sk, vk = get_or_create_key_pair(args.version, tmp_dir)
     _print_keys(sk, vk)
 
 
@@ -116,6 +120,7 @@ Payload:
 
 Expiration:
 --------\n
+    Expired: {'Yes' if token.expired else 'No'}
     {token.expiration}    -    ({exp_info})
 
 Token:

@@ -145,7 +145,7 @@ class DuckietownToken(object):
             # never-expiring tokens
             return False
         # compare now() with token expiration date
-        return exp < datetime.datetime.now()
+        return exp < datetime.datetime.utcnow()
 
     def as_string(self) -> str:
         """
@@ -314,7 +314,7 @@ class DuckietownToken(object):
         # compute expiration date
         exp = None
         if (days + hours + minutes) > 0:
-            now = datetime.datetime.now()
+            now = datetime.datetime.utcnow()
             delta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
             exp = (now + delta).strftime(DATETIME_FORMAT[version])
         # initialize payload

@@ -112,7 +112,7 @@ Verifying Key:
 
 def _print_token_info(token: DuckietownToken):
     exp_info: str = "expired" if token.expired else \
-        f"in {(token.expiration - datetime.datetime.now()).days} days"
+        f"in {token.expiration and (token.expiration - datetime.datetime.utcnow()).days} days"
     print(f"""
 Payload:
 --------

@@ -297,7 +297,10 @@ class DuckietownToken(object):
         token = DuckietownToken(version, payload, signature)
         # make sure the token is not expired
         if not allow_expired and token.expired:
-            raise ExpiredToken("This token is expired. Obtain a new one.")
+            raise ExpiredToken(
+                token.expiration,
+                f"This token is expired on '{str(token.expiration)}'. Obtain a new one"
+            )
         # ---
         return token
 

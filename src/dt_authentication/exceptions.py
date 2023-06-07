@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class GenericException(BaseException):
     """
     A generic exception
@@ -19,7 +22,13 @@ class ExpiredToken(GenericException):
     An expired Duckietown Token was encountered
     """
 
-    pass
+    def __init__(self, expiration: datetime, *args):
+        super(ExpiredToken, self).__init__(*args)
+        self._expiration: datetime = expiration
+
+    @property
+    def expiration(self) -> datetime:
+        return self._expiration
 
 
 class NotARenewableToken(GenericException):

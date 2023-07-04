@@ -31,8 +31,8 @@ def cli_verify(args=None):
 
         try:
             token = DuckietownToken.from_string(token_s)
-        except InvalidToken:
-            msg = "Invalid token format."
+        except InvalidToken as e:
+            msg = f"Invalid token: {e.args[0]}"
             logger.error(msg)
             sys.exit(1)
 
@@ -52,6 +52,7 @@ def cli_generate(args=None):
     parser.add_argument("--nminutes", type=int, default=0, help="Number of minutes for validity")
     parser.add_argument("--renewable", action="store_true", default=False, help="Make a renewable token")
     parser.add_argument("--scope", type=str, default=None, help="Scope as compact comma-separated list")
+    parser.add_argument("--version", type=str, default=None, help="Version of the token to generate")
 
     args = parser.parse_args(args=args)
 
@@ -60,6 +61,11 @@ def cli_generate(args=None):
         raise Exception(msg)
     if args.uid is None:
         msg = "Please supply --uid "
+        raise Exception(msg)
+
+    # make sure the requested version is supported
+    if args.version not in [None, "dt1", "dt2"]:
+        msg = f"Token version '{args.version}' not recognized."
         raise Exception(msg)
 
     # load private key
@@ -75,7 +81,8 @@ def cli_generate(args=None):
         hours=args.nhours,
         minutes=args.nminutes,
         scope=args.scope.split(",") if args.scope else None,
-        renewable=args.renewable
+        renewable=args.renewable,
+        version=args.version
     )
     _print_token_info(token)
 
@@ -116,7 +123,7 @@ def _print_token_info(token: DuckietownToken):
     print(f"""
 Payload:
 --------
-{token.payload_as_json(sort_keys=True, indent=4).strip("{}")}
+{token.payload_as_json(indent=4).strip("{}")}
 
 Expiration:
 --------\n

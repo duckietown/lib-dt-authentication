@@ -105,7 +105,8 @@ class DuckietownToken(object):
         """
         The scope of this token.
         """
-        return self._payload.get("scope", DEFAULT_SCOPE)
+        scope = self._payload.get("scope", DEFAULT_SCOPE)
+        return [(s if isinstance(s, Scope) else Scope.parse(s)) for s in scope]
 
     @property
     def data(self) -> Optional[dict]:
@@ -163,11 +164,13 @@ class DuckietownToken(object):
         """
         The token's payload as JSON string.
         """
-        # encode scope
-        scope: List[Union[str, dict]] = [s.compact() for s in self.scope]
-        # encode payload into JSON
+        # get a copy of the payload dictionary
         payload = copy.deepcopy(self._payload)
-        payload["scope"] = scope
+        # replace parsed scope
+        scope: List[Union[str, dict]] = [s.compact() for s in self.scope]
+        if "scope" in SUPPORTED_FIELDS[self.version]:
+            payload["scope"] = scope
+        # encode payload into JSON
         return json.dumps(payload, sort_keys=sort_keys, **kwargs)
 
     def grants(self, action: str, resource: Optional[str] = None, identifier: Optional[str] = None,
@@ -375,10 +378,5 @@ class DuckietownToken(object):
         # compile payload
         payload_bytes = str.encode(json.dumps(payload, sort_keys=True))
         signature = key.sign(payload_bytes, entropy=entropy)
-
-        # - scope
-        if "scope" in fields:
-            # noinspection PyUnboundLocalVariable
-            payload["scope"] = scope_parsed
 
         return DuckietownToken(version, payload, signature)

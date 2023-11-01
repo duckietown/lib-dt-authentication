@@ -1,0 +1,21 @@
+{
+  "install_requires": [
+    "base58",
+    "ecdsa"
+  ],
+  "tests_require": [],
+  "srcdir": "src",
+  "package_name": "dt-authentication-daffy",
+  "entry_points": {
+    "console_scripts": []
+  },
+  "zip_safe": true,
+  "include_package_data": true,
+  "modules": [
+    "dt_authentication"
+  ],
+  "version": "0.1.8",
+  "author": "",
+  "author_email": "",
+  "url": ""
+}

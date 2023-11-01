@@ -127,6 +127,7 @@ Verifying Key:
 """)
 
 
+# TODO: check if payload_as_json is doing sort_keys already
 def _print_token_info(token: DuckietownToken):
     exp_info: str = "expired" if token.expired else \
         f"in {token.expiration and (token.expiration - datetime.datetime.utcnow()).days} days"

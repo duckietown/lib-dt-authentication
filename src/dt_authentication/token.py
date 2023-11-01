@@ -265,7 +265,7 @@ class DuckietownToken(object):
             ExpiredToken:   The given token is expired.
         """
         # break token into 3 pieces, dt1-PAYLOAD-SIGNATURE
-        p = s.split('-')
+        p = s.split("-")
         # check number of components
         if len(p) != 3:
             raise InvalidToken("The token should be comprised of three (dash-separated) parts")

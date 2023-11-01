@@ -102,4 +102,4 @@ upload:
 	rm -f dist/*
 	rm -rf src/*.egg-info
 	python3 setup.py sdist
-	twine upload dist/*
+	twine upload --skip-existing --verbose dist/*

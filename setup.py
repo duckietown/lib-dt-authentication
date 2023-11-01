@@ -30,7 +30,7 @@ def get_version_from_source(filename):
     return version
 
 
-version = get_version_from_source('src/dt_authentication/__init__.py')
+version = get_version_from_source("src/dt_authentication/__init__.py")
 
 # read project dependencies
 # NO - dependencies.txt is for testing dependiences - EVERYTHING PINNED
@@ -47,13 +47,18 @@ install_requires = [
 tests_require = []
 
 # compile description
-underline = '=' * (len(package_name) + len(short_description) + 2)
+underline = "=" * (len(package_name) + len(short_description) + 2)
 description = """
 {name}: {short}
 {underline}
 
 {long}
-""".format(name=package_name, short=short_description, long=full_description, underline=underline)
+""".format(
+    name=package_name,
+    short=short_description,
+    long=full_description,
+    underline=underline,
+)
 
 console_scripts = [
     "dt-tokens-generate = dt_authentication.cli:cli_generate",
@@ -70,7 +75,7 @@ setup(
     tests_require=tests_require,
     install_requires=install_requires,
     package_dir={"": "src"},
-    packages=find_packages('./src'),
+    packages=find_packages("./src"),
     long_description=description,
     version=version,
     entry_points={"console_scripts": console_scripts},

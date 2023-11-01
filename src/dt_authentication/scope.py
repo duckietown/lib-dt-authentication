@@ -1,6 +1,6 @@
 import dataclasses
 import json
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, List
 
 
 @dataclasses.dataclass
@@ -47,10 +47,19 @@ class Scope:
             raise ValueError(f"Scope of type '{type(scope).__name__}' not supported. "
                              f"Expected 'str' or 'dict'.")
 
-    def compact(self) -> Union[str, dict]:
+    def compact(self, exclude: List[str] = None, force_dict: bool = False) -> Union[str, dict]:
         self._sanity_check()
-        if self.service is None:
-            return ":".join(filter(lambda x: x is not None, [self.action, self.resource, self.identifier]))
+        # make sure the exclusion list is valid
+        exclude: List[str] = exclude or []
+        choices: List[str] = ["identifier", "service"]
+        for e in exclude:
+            if e not in choices:
+                raise ValueError(f"Field to exclude '{e}' not recognized. Valid choices are {str(choices)}.")
+        extras: List[str] = [self.identifier] if "identifier" not in exclude else []
+        # without 'service' we use the string form
+        if (not force_dict) and (self.service is None or "service" in exclude):
+            return ":".join(filter(lambda x: x is not None, [self.action, self.resource] + extras))
+        # dict form instead
         return dataclasses.asdict(self)
 
     def __str__(self):

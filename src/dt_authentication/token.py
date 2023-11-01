@@ -2,7 +2,7 @@ import copy
 import datetime
 import json
 import os
-from typing import Dict, Union, List, Optional
+from typing import Dict, Union, List, Optional, Any
 
 import requests
 from base58 import b58decode, b58encode
@@ -189,13 +189,15 @@ class DuckietownToken(object):
                 return True
         return False
 
-    def renew(self, key: Optional[SigningKey] = None, in_place: bool = False) -> 'DuckietownToken':
+    def renew(self, key: Optional[SigningKey] = None, in_place: bool = False,
+              changes: Dict[str, Any] = None) -> 'DuckietownToken':
         """
         Renews this token using the given signing key or by reaching out to the remote Duckietown auth
         service if no keys are given.
 
         :param key:         (Optional) Signing key to use to sign the new token.
         :param in_place:    Update this very instance with the new token.
+        :param changes:     Dictionary of fields to update in the new token. Only valid when 'key' is set.
         :return:            A new token with the same scope and duration of the old one.
         """
         # make sure the token is renewable
@@ -203,17 +205,21 @@ class DuckietownToken(object):
             raise NotARenewableToken()
 
         if key is not None:
+            fields: Dict[str, Any] = {
+                "minutes": self.duration,
+                "renewable": True,
+                "data": self.data,
+                "scope": self.scope,
+                "version": self.version,
+            }
+            # given changes
+            fields.update(**(changes or {}))
             # generate new token with the given key
-            new: DuckietownToken = self.generate(
-                key,
-                self.uid,
-                minutes=self.duration,
-                renewable=True,
-                data=self.data,
-                scope=self.scope,
-                version=self.version,
-            )
+            new: DuckietownToken = self.generate(key, self.uid, **fields)
         else:
+            if changes is not None:
+                raise ValueError("You can only specify a list of 'changes' when renewing a token using a "
+                                 "provided 'key'")
             # request new token
             try:
                 response = requests.get(

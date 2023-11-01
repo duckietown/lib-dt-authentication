@@ -3,6 +3,7 @@ import datetime
 import logging
 import sys
 import tempfile
+from typing import Optional
 
 # noinspection PyProtectedMember
 from ecdsa import SigningKey, VerifyingKey
@@ -19,18 +20,28 @@ __all__ = ["cli_verify", "cli_generate"]
 
 
 def cli_verify(args=None):
-    try:
-        if args is None:
-            args = sys.argv[1:]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--vk", type=str, default=None, help="Path to the public key to use")
+    parser.add_argument("token", type=str, nargs="?", default=None, help="The token to verify")
+    args = parser.parse_args(args=args)
 
-        if args:
-            token_s = args[0]
+    try:
+        if args.token:
+            token_s = args.token
         else:
             msg = "Please enter token:\n> "
             token_s = builtins.input(msg)
 
+        # optional verifying key from file
+        vk: Optional[VerifyingKey] = None
+        if args.vk:
+            with open(args.vk, "rt") as fin:
+                vks = fin.read()
+                vks = "\n".join([line for line in vks.split("\n") if not line.startswith("#")])
+                vk = VerifyingKey.from_pem(vks)
+
         try:
-            token = DuckietownToken.from_string(token_s)
+            token = DuckietownToken.from_string(token_s, vk=vk)
         except InvalidToken as e:
             msg = f"Invalid token: {e.args[0]}"
             logger.error(msg)
@@ -53,7 +64,6 @@ def cli_generate(args=None):
     parser.add_argument("--renewable", action="store_true", default=False, help="Make a renewable token")
     parser.add_argument("--scope", type=str, default=None, help="Scope as compact comma-separated list")
     parser.add_argument("--version", type=str, default=None, help="Version of the token to generate")
-
     args = parser.parse_args(args=args)
 
     if args.key is None:

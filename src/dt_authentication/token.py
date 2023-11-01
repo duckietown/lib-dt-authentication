@@ -134,9 +134,9 @@ class DuckietownToken(object):
         """
         The token's expiration date.
         """
-        if self._payload['exp'] is None:
+        if self._payload["exp"] is None:
             return None
-        return datetime.datetime.strptime(self._payload['exp'], DATETIME_FORMAT[self._version])
+        return datetime.datetime.strptime(self._payload["exp"], DATETIME_FORMAT[self._version])
 
     @property
     def expired(self) -> bool:

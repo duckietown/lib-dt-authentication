@@ -49,13 +49,15 @@ class Scope:
 
     def compact(self, exclude: List[str] = None, force_dict: bool = False) -> Union[str, dict]:
         self._sanity_check()
+        # resource is optional
+        extras: List[str] = [self.resource] if self.resource is not None else []
         # make sure the exclusion list is valid
         exclude: List[str] = exclude or []
         choices: List[str] = ["identifier", "service"]
         for e in exclude:
             if e not in choices:
                 raise ValueError(f"Field to exclude '{e}' not recognized. Valid choices are {str(choices)}.")
-        extras: List[str] = [self.identifier] if "identifier" not in exclude else []
+        extras += ([self.identifier] if "identifier" not in exclude else [])
         # without 'service' we use the string form
         if (not force_dict) and (self.service is None or "service" in exclude):
             return ":".join(filter(lambda x: x is not None, [self.action, self.resource] + extras))

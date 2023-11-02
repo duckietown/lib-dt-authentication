@@ -60,7 +60,7 @@ class Scope:
         extras += ([self.identifier] if "identifier" not in exclude else [])
         # without 'service' we use the string form
         if (not force_dict) and (self.service is None or "service" in exclude):
-            return ":".join(filter(lambda x: x is not None, [self.action, self.resource] + extras))
+            return ":".join(filter(lambda x: x is not None, [self.action] + extras))
         # dict form instead
         return dataclasses.asdict(self)
 

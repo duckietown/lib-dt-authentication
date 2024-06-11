@@ -6,7 +6,7 @@ from typing import List
 
 from dt_authentication import DuckietownToken, InvalidToken
 from dt_authentication.exceptions import NotARenewableToken
-from dt_authentication.token import DEFAULT_SCOPE, Scope
+from dt_authentication.token import Scope
 from dt_authentication.utils import get_id_from_token, get_or_create_key_pair
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def test1():
     assert token.uid == SAMPLE_TOKEN_UID
 
     assert token.expiration == date(SAMPLE_TOKEN_EXP)
-    assert scope(token.scope) == scope(DEFAULT_SCOPE)
+    assert scope(token.scope) == scope(["auth"])
 
     seq = SAMPLE_TOKEN[6:8]
     msg_bad = SAMPLE_TOKEN.replace(seq, "XY")
@@ -113,7 +113,7 @@ def test_scope_resource():
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
         token = DuckietownToken.from_string(token.as_string(), vk=vk)
-    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert scope(token.scope) == scope(s)
     assert token.grants(s[0].action, s[0].resource)
 
 
@@ -123,7 +123,7 @@ def test_scope_resource_id():
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
         token = DuckietownToken.from_string(token.as_string(), vk=vk)
-    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert scope(token.scope) == scope(s)
     assert token.grants(s[0].action, s[0].resource, s[0].identifier)
 
 
@@ -133,7 +133,7 @@ def test_scope_service():
         sk, vk = get_or_create_key_pair("dt2", tmp)
         token = DuckietownToken.generate(sk, SAMPLE_TOKEN_UID, scope=s)
         token = DuckietownToken.from_string(token.as_string(), vk=vk)
-    assert scope(token.scope) == scope(DEFAULT_SCOPE + s)
+    assert scope(token.scope) == scope(s)
     assert token.grants(s[0].action, s[0].resource, s[0].identifier, s[0].service)
 
 

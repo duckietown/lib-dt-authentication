@@ -41,7 +41,6 @@ DEFAULT_VERSION = "dt2"
 
 
 ScopeList = List[Union[Scope, str]]
-DEFAULT_SCOPE = [Scope(action="auth")]
 
 TOKEN_RENEW_ONLINE_HOST = os.environ.get("DT_TOKEN_RENEW_HOST", "hub.duckietown.com")
 TOKEN_RENEW_ONLINE_URL = f"https://{TOKEN_RENEW_ONLINE_HOST}/api/v1/auth/token/renew"
@@ -105,7 +104,7 @@ class DuckietownToken(object):
         """
         The scope of this token.
         """
-        scope = self._payload.get("scope", DEFAULT_SCOPE)
+        scope = self._payload.get("scope", [])
         return [(s if isinstance(s, Scope) else Scope.parse(s)) for s in scope]
 
     @property
@@ -338,12 +337,7 @@ class DuckietownToken(object):
         if "scope" in fields:
             # sanitize scope
             if scope is None:
-                scope = DEFAULT_SCOPE
-            else:
-                # a scope list is given, prepend the default scope to it
-                for s in DEFAULT_SCOPE:
-                    if s not in scope:
-                        scope = [s] + scope
+                scope = []
             # make sure the scope is valid
             if not isinstance(scope, list):
                 raise ValueError("Argument 'scope' must be a list")

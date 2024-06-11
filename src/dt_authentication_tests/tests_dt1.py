@@ -4,7 +4,6 @@ import logging
 import tempfile
 
 from dt_authentication import DuckietownToken, InvalidToken
-from dt_authentication.token import DEFAULT_SCOPE
 from dt_authentication.utils import get_id_from_token, get_or_create_key_pair
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ def test1():
 
     assert token.uid == SAMPLE_TOKEN_UID
     assert token.expiration == date(SAMPLE_TOKEN_EXP)
-    assert scope(token.scope) == scope(DEFAULT_SCOPE)
+    assert scope(token.scope) == scope([])
 
     seq = SAMPLE_TOKEN[6:8]
     msg_bad = SAMPLE_TOKEN.replace(seq, "XY")
